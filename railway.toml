@@ -5,6 +5,17 @@
 builder = "NIXPACKS"
 # Install runs in nixpacks.toml (pnpm 11.1.3, --no-frozen-lockfile). Build only api-server here.
 buildCommand = "pnpm --filter @workspace/api-server run build"
+# Root monorepo config must trigger deploys (not only api-server sources).
+watchPatterns = [
+  "/artifacts/api-server/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/railway.toml",
+  "/nixpacks.toml",
+  "/.nvmrc",
+  "/.npmrc",
+]
 
 [deploy]
 startCommand = "pnpm --filter @workspace/api-server run start"
