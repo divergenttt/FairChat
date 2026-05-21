@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "db:push": "drizzle-kit push --force"
+    "db:push": "drizzle-kit push --config drizzle.config.ts"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.10",
@@ -33,6 +33,7 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@esbuild/win32-x64": "^0.28.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
