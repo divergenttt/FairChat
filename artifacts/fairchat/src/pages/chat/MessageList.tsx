@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { apiUrl } from "@/lib/apiConfig";
+import { getMessageAttachment, getMessageCaption, attachmentPreviewLabel } from "@/lib/attachmentMessage";
 import { encryptPaymentPayload, tryParsePaymentPayload } from "@/lib/paymentMessage";
 import { getCachedPrivateKey } from "@/lib/crypto";
 import { Check, Reply, Paperclip, Flame, RotateCw, ArrowUpRight, ArrowDownLeft, ExternalLink, CheckCircle2, X } from "lucide-react";
@@ -78,7 +79,9 @@ export default function MessageList() {
           {group.messages.map((msg, i) => {
             const mine = isFav || msg.senderId === user.id;
             const isSel = selIds.has(msg.id);
-            const isMatch = chatQ.trim() && msg.decrypted?.toLowerCase().includes(chatQ.toLowerCase());
+            const att = getMessageAttachment(msg);
+            const caption = getMessageCaption(msg);
+            const isMatch = chatQ.trim() && (caption || msg.decrypted || "").toLowerCase().includes(chatQ.toLowerCase());
             const isCurrentMatch = chatMatches[chatMatchIdx]?.id === msg.id;
             const dx = dragInfo?.msgId===msg.id ? dragInfo.dx : 0;
             const replyMsg = msg.replyToId ? replyMap.get(msg.replyToId) ?? null : null;
@@ -88,9 +91,9 @@ export default function MessageList() {
             const nextMsg = i < group.messages.length-1 ? group.messages[i+1] : undefined;
             const grouped = isGrouped(msg, prevMsg);
             const isLastInGroup = !nextMsg || !isGrouped(nextMsg, msg);
-            const isImageOnly = !!msg.attachmentUrl && !!msg.attachmentType?.startsWith("image/") && !msg.decrypted?.trim();
-            const _stripped = (msg.decrypted ?? "").trim();
-            const isBigEmoji = !msg.attachmentUrl && !msg.replyToId && _stripped.length > 0 && _stripped.length <= 16 &&
+            const isImageOnly = !!att?.type.startsWith("image/") && !caption;
+            const _stripped = caption;
+            const isBigEmoji = !att && !msg.replyToId && _stripped.length > 0 && _stripped.length <= 16 &&
               /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u{200D}\u{FE0F}\u{20E3}\u{1F3FB}-\u{1F3FF}]+$/u.test(_stripped) &&
               !(/[a-zA-Z0-9\s!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(_stripped));
             const cbVisible = selMode;
@@ -348,7 +351,11 @@ export default function MessageList() {
                             {replyMsg.senderId===user.id?"You":selectedUser.displayName}
                           </div>
                           <div style={{ fontSize:12, color:mine?"rgba(255,255,255,0.7)":T.textSec, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:220 }}>
-                            {replyMsg.decrypted}
+                            {(() => {
+                              const rAtt = getMessageAttachment(replyMsg);
+                              if (rAtt) return attachmentPreviewLabel(rAtt, getMessageCaption(replyMsg));
+                              return replyMsg.decrypted;
+                            })()}
                           </div>
                         </div>
                       )}
@@ -357,7 +364,7 @@ export default function MessageList() {
                       <div style={{ position:"relative", display:"flex", flexDirection:mine?"row-reverse":"row", alignItems:"flex-end", gap:4 }}>
                         <div
                           className={(isImageOnly || isBigEmoji) ? "fc-bubble--emoji" : (mine ? "fc-bubble--out" : "fc-bubble--in")}
-                          onClick={e=>{ e.stopPropagation(); if(longPressActivated.current) return; if(selMode){ toggleSel(msg.id); return; } if(isImageOnly && msg.attachmentUrl){ setLightboxUrl(withToken(msg.attachmentUrl)); setLightboxMsg(msg); setLightboxRotation(0); setLightboxMoreOpen(false); return; } const menuW=220; const menuH=mine?368:328; let left=mine?e.clientX-menuW:e.clientX; let top=e.clientY+10; if(top+menuH>window.innerHeight-8) top=e.clientY-menuH-10; left=Math.max(8,Math.min(left,window.innerWidth-menuW-8)); top=Math.max(8,top); setPickerPos({left,top}); setReactionPickerMsgId(p=>p===msg.id?null:msg.id); }}
+                          onClick={e=>{ e.stopPropagation(); if(longPressActivated.current) return; if(selMode){ toggleSel(msg.id); return; } if(isImageOnly && att){ setLightboxUrl(withToken(att.url)); setLightboxMsg(msg); setLightboxRotation(0); setLightboxMoreOpen(false); return; } const menuW=220; const menuH=mine?368:328; let left=mine?e.clientX-menuW:e.clientX; let top=e.clientY+10; if(top+menuH>window.innerHeight-8) top=e.clientY-menuH-10; left=Math.max(8,Math.min(left,window.innerWidth-menuW-8)); top=Math.max(8,top); setPickerPos({left,top}); setReactionPickerMsgId(p=>p===msg.id?null:msg.id); }}
                           onDoubleClick={e=>{ e.stopPropagation(); setReactionPickerMsgId(null); setPickerPos(null); enterSelMode(msg.id); }}
                           style={{
                             padding: (isImageOnly || isBigEmoji) ? 0 : "8px 14px",
@@ -380,16 +387,16 @@ export default function MessageList() {
                             <div style={{ borderLeft:`3px solid ${mine?"rgba(255,255,255,0.5)":"var(--fc-accent)"}`, paddingLeft:8, marginBottom:2, fontSize:13, opacity:0.85 }}>
                               {msg.decrypted.slice(2)}
                             </div>
-                          ) : msg.decrypted ? <MessageText text={msg.decrypted} q={chatQ} mine={mine} dark={dk} /> : null}
+                          ) : caption ? <MessageText text={caption} q={chatQ} mine={mine} dark={dk} /> : null}
 
                           {/* Attachment */}
-                          {msg.attachmentUrl && (() => {
-                            const isImage = msg.attachmentType?.startsWith("image/");
-                            const isAudio = msg.attachmentType?.startsWith("audio/");
-                            const url = withToken(msg.attachmentUrl);
+                          {att && (() => {
+                            const isImage = att.type.startsWith("image/");
+                            const isAudio = att.type.startsWith("audio/");
+                            const url = withToken(att.url);
                             if (isImage) return (
-                              <div style={{ display:"inline-block", marginTop: msg.decrypted ? 6 : 0, borderRadius:8, overflow:"hidden" }}>
-                                <img src={url} alt={msg.attachmentName ?? "image"}
+                              <div style={{ display:"inline-block", marginTop: caption ? 6 : 0, borderRadius:8, overflow:"hidden" }}>
+                                <img src={url} alt={att.name ?? "image"}
                                   loading="lazy"
                                   className={loadedImgsRef.current.has(url) ? "" : "img-blur"}
                                   onLoad={e=>{ loadedImgsRef.current.add(url); e.currentTarget.classList.add("img-loaded"); }}
@@ -399,21 +406,21 @@ export default function MessageList() {
                               </div>
                             );
                             if (isAudio) return (
-                              <div style={{ marginTop: msg.decrypted && msg.decrypted !== "[Voice message]" ? 6 : 0 }} onClick={e=>e.stopPropagation()}>
+                              <div style={{ marginTop: caption && caption !== "[Voice message]" ? 6 : 0 }} onClick={e=>e.stopPropagation()}>
                                 <AudioPlayer src={url} dark={dk} mine={mine}/>
                               </div>
                             );
                             return (
-                              <a href={url} target="_blank" rel="noreferrer" download={msg.attachmentName ?? "file"} onClick={e=>e.stopPropagation()}
-                                style={{ display:"flex", alignItems:"center", gap:8, marginTop: msg.decrypted ? 6 : 0, padding:"8px 10px", borderRadius:10,
+                              <a href={url} target="_blank" rel="noreferrer" download={att.name ?? "file"} onClick={e=>e.stopPropagation()}
+                                style={{ display:"flex", alignItems:"center", gap:8, marginTop: caption ? 6 : 0, padding:"8px 10px", borderRadius:10,
                                          background: mine?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.06)",
                                          textDecoration:"none", color:"inherit", cursor:"pointer" }}>
                                 <div style={{ width:32, height:32, borderRadius:8, background: mine?"rgba(255,255,255,0.2)":"var(--fc-accent)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                                   <Paperclip size={16} style={{ color:"#fff" }}/>
                                 </div>
                                 <div style={{ overflow:"hidden" }}>
-                                  <div style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:160 }}>{msg.attachmentName ?? "file"}</div>
-                                  <div style={{ fontSize:11, opacity:0.7 }}>{msg.attachmentSize ? `${(msg.attachmentSize/1024).toFixed(0)} KB` : ""}</div>
+                                  <div style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:160 }}>{att.name ?? "file"}</div>
+                                  <div style={{ fontSize:11, opacity:0.7 }}>{att.size ? `${(att.size/1024).toFixed(0)} KB` : ""}</div>
                                 </div>
                               </a>
                             );
@@ -421,8 +428,8 @@ export default function MessageList() {
 
                           {/* Link preview */}
                           {(() => {
-                            if (!msg.decrypted) return null;
-                            const urls = Array.from(msg.decrypted.matchAll(URL_REGEX), m => m[0].replace(/[.,;!?)"']+$/, ""));
+                            if (!caption) return null;
+                            const urls = Array.from(caption.matchAll(URL_REGEX), m => m[0].replace(/[.,;!?)"']+$/, ""));
                             const previewUrl = urls.find(url => linkPreviews[url]?.title);
                             if (!previewUrl) return null;
                             const preview = linkPreviews[previewUrl]!;

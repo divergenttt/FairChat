@@ -5,6 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiUrl, getWsUrl, wsNeedsTokenAuth } from "@/lib/apiConfig";
 import { encryptMessage, decryptMessage, initSodium, generateKeyPair, derivePublicKey, isValidKey, loadPrivateKey, setPrivateKey } from "@/lib/crypto";
 import { tryParsePaymentPayload } from "@/lib/paymentMessage";
+import {
+  type AttachmentPayload,
+  encryptAttachmentPayload,
+  getMessageAttachment,
+  attachmentPreviewLabel,
+  tryParseAttachmentPayload,
+} from "@/lib/attachmentMessage";
 import { idbGet, idbSet, idbClear, IDB_MSGS, IDB_CONVS, IDB_KEYS } from "@/lib/idb";
 import { fmtTime } from "./chat/helpers";
 import { URL_REGEX, THEMES } from "./chat/constants";
@@ -59,6 +66,8 @@ function fmtMsgPreview(decrypted: string | undefined, msgType?: string | null): 
     return "Payment request";
   }
   if (msgType === "payment_request_declined") return "✕ Payment request declined";
+  const att = tryParseAttachmentPayload(decrypted);
+  if (att) return attachmentPreviewLabel(att, att.caption);
   return decrypted;
 }
 
@@ -1015,15 +1024,25 @@ export default function ChatPage() {
         if (res.ok) {
           const { url, name, type: ftype, size } = await res.json();
           const su = selectedUserRef.current; if (!su) return;
-          const content = "[Voice message]";
           await fetchFreshKey(su.id);
           const otherPk = pubKeyMapRef.current.get(su.id);
-          if (!otherPk || !myPrivKeyRef.current) { alert("Encryption failed — message not sent"); return; }
-          let encContent: string;
-          try { encContent = encryptMessage(content, otherPk, myPrivKeyRef.current); }
-          catch { alert("Encryption failed — message not sent"); return; }
-          await fetch(apiUrl(`/api/messages/${su.id}`), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-            body: JSON.stringify({ encryptedContent: encContent, attachmentUrl: url, attachmentName: name, attachmentType: ftype, attachmentSize: size }) });
+          const payload: AttachmentPayload = { url, name, type: ftype, size, caption: "[Voice message]" };
+          const encContent = encryptAttachmentPayload(payload, otherPk!, myPrivKeyRef.current);
+          if (!encContent) { alert("Encryption failed — message not sent"); return; }
+          const postRes = await fetch(apiUrl(`/api/messages/${su.id}`), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+            body: JSON.stringify({ encryptedContent: encContent }) });
+          if (postRes.ok && otherPk && myPrivKeyRef.current) {
+            const raw = await postRes.json();
+            const decrypted = decryptMessage(raw.encryptedContent, otherPk, myPrivKeyRef.current);
+            const newMsg = { ...raw, decrypted };
+            if (su.id === selectedUserRef.current?.id) {
+              setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
+              newMsgIdsRef.current.add(newMsg.id);
+            }
+            const cached = msgCacheRef.current.get(su.id) ?? [];
+            if (!cached.some(m => m.id === newMsg.id)) msgCacheRef.current.set(su.id, [...cached, newMsg]);
+            updateConvLocally(su.id, fmtMsgPreview(newMsg.decrypted, newMsg.messageType) ?? "🎤 Voice message", newMsg.createdAt);
+          }
         }
       } finally { setAttachmentUploading(false); }
     };
@@ -1044,9 +1063,14 @@ export default function ChatPage() {
       const res = await fetch(apiUrl(`/api/messages/media/${selectedUser.id}`), { credentials: "include" });
       const data = await res.json();
       const otherPk = pubKeyMapRef.current.get(selectedUser.id);
-      const medias: Message[] = (data.media ?? []).map((m: Message) => ({
-        ...m, decrypted: m.encryptedContent ? (decryptMessage(m.encryptedContent, otherPk, myPrivKeyRef.current ?? undefined) ?? undefined) : undefined
-      }));
+      const medias: Message[] = (data.media ?? [])
+        .map((m: Message) => ({
+          ...m,
+          decrypted: m.encryptedContent
+            ? (decryptMessage(m.encryptedContent, otherPk, myPrivKeyRef.current ?? undefined) ?? undefined)
+            : undefined,
+        }))
+        .filter((m: Message) => getMessageAttachment(m) != null);
       setGalleryMedia(medias);
     } catch { setGalleryMedia([]); } finally { setGalleryLoading(false); }
   };
@@ -1134,22 +1158,25 @@ export default function ChatPage() {
       const { url, name, type, size } = await uploadRes.json();
       const text = messageInput.trim();
       await fetchFreshKey(selectedUser.id);
-      let encrypted = "";
-      if (text) {
-        try { encrypted = enc(text, selectedUser.id); }
-        catch { alert("Encryption failed — message not sent"); setAttachmentUploading(false); return; }
-      }
+      const otherPk = pubKeyMapRef.current.get(selectedUser.id);
+      const payload: AttachmentPayload = { url, name, type, size, ...(text ? { caption: text } : {}) };
+      const encrypted = encryptAttachmentPayload(payload, otherPk!, myPrivKeyRef.current);
+      if (!encrypted) { alert("Encryption failed — message not sent"); setAttachmentUploading(false); return; }
       const replyToId = replyTo?.id ?? undefined;
       const res = await fetch(apiUrl(`/api/messages/${selectedUser.id}`), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ encryptedContent: encrypted, replyToId, attachmentUrl: url, attachmentName: name, attachmentType: type, attachmentSize: size }),
+        body: JSON.stringify({ encryptedContent: encrypted, replyToId }),
       });
       if (res.ok) {
-        const newMsg = { ...await res.json(), decrypted: text };
+        const raw = await res.json();
+        const decrypted = otherPk && myPrivKeyRef.current
+          ? decryptMessage(raw.encryptedContent, otherPk, myPrivKeyRef.current)
+          : undefined;
+        const newMsg = { ...raw, decrypted };
         setMessages(prev => { if (prev.some(m => m.id === newMsg.id)) return prev; newMsgIdsRef.current.add(newMsg.id); return [...prev, newMsg]; });
         const target = selectedUser.id; const cached = msgCacheRef.current.get(target) ?? [];
         if (!cached.some(m => m.id === newMsg.id)) msgCacheRef.current.set(target, [...cached, newMsg]);
-        updateConvLocally(target, fmtMsgPreview(newMsg.decrypted, newMsg.messageType) || (newMsg.attachmentName ?? ""), newMsg.createdAt);
+        updateConvLocally(target, fmtMsgPreview(newMsg.decrypted, newMsg.messageType) || attachmentPreviewLabel(payload, text), newMsg.createdAt);
         setMessageInput(""); setReplyTo(null); setShowEmojiPicker(false); clearAttachment();
       }
     } catch {} finally { setAttachmentUploading(false); }

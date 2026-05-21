@@ -1,5 +1,6 @@
 import { X, Images, Play, Download, FileText } from "lucide-react";
 import { useChatContext } from "./context";
+import { getMessageAttachment } from "@/lib/attachmentMessage";
 import { fmtFull } from "./helpers";
 import { AudioPlayer } from "./ui";
 
@@ -41,49 +42,61 @@ export default function MediaGallery() {
         ) : galleryTab==="photos" ? (
           <div style={{ flex:1, overflowY:"auto", padding:8 }}>
             {(() => {
-              const imgs = galleryMedia.filter(m=>m.attachmentType?.startsWith("image/")||m.attachmentType?.startsWith("video/"));
+              const imgs = galleryMedia.filter(m => {
+                const a = getMessageAttachment(m);
+                return !!a && (a.type.startsWith("image/") || a.type.startsWith("video/"));
+              });
               if (!imgs.length) return <div style={{ textAlign:"center", color:T.textSec, marginTop:50, fontSize:13 }}>No photos or videos yet</div>;
               return <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:3 }}>
-                {imgs.map(m=>(
-                  <div key={m.id} onClick={()=>{ if(m.attachmentType?.startsWith("image/")){setLightboxUrl(withToken(m.attachmentUrl)); setLightboxMsg(m); setLightboxRotation(0); setLightboxMoreOpen(false); setShowMediaGallery(false);} }}
+                {imgs.map(m=>{
+                  const a = getMessageAttachment(m)!;
+                  return (
+                  <div key={m.id} onClick={()=>{ if(a.type.startsWith("image/")){setLightboxUrl(withToken(a.url)); setLightboxMsg(m); setLightboxRotation(0); setLightboxMoreOpen(false); setShowMediaGallery(false);} }}
                     style={{ aspectRatio:"1", borderRadius:6, overflow:"hidden", cursor:"pointer", background:T.inputBg }}>
-                    {m.attachmentType?.startsWith("image/")
-                      ? <img src={withToken(m.attachmentUrl)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
+                    {a.type.startsWith("image/")
+                      ? <img src={withToken(a.url)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
                       : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}><Play size={22} style={{ color:T.textSec }}/></div>}
                   </div>
-                ))}
+                );})}
               </div>;
             })()}
           </div>
         ) : galleryTab==="files" ? (
           <div style={{ flex:1, overflowY:"auto", padding:12, display:"flex", flexDirection:"column", gap:4 }}>
             {(() => {
-              const files = galleryMedia.filter(m=>!m.attachmentType?.startsWith("image/")&&!m.attachmentType?.startsWith("video/")&&!m.attachmentType?.startsWith("audio/"));
+              const files = galleryMedia.filter(m => {
+                const a = getMessageAttachment(m);
+                return !!a && !a.type.startsWith("image/") && !a.type.startsWith("video/") && !a.type.startsWith("audio/");
+              });
               if (!files.length) return <div style={{ textAlign:"center", color:T.textSec, marginTop:50, fontSize:13 }}>No files yet</div>;
-              return files.map(m=>(
-                <a key={m.id} href={withToken(m.attachmentUrl)} download={m.attachmentName} target="_blank" rel="noopener noreferrer"
+              return files.map(m=>{
+                const a = getMessageAttachment(m)!;
+                return (
+                <a key={m.id} href={withToken(a.url)} download={a.name} target="_blank" rel="noopener noreferrer"
                   style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, background:T.inputBg, textDecoration:"none" }}>
                   <FileText size={22} style={{ color:"var(--fc-accent)", flexShrink:0 }}/>
                   <div style={{ flex:1, overflow:"hidden" }}>
-                    <div style={{ fontSize:13, fontWeight:500, color:T.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.attachmentName||"File"}</div>
-                    <div style={{ fontSize:11, color:T.textSec }}>{m.attachmentSize?`${(m.attachmentSize/1024).toFixed(0)} KB`:""}</div>
+                    <div style={{ fontSize:13, fontWeight:500, color:T.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.name||"File"}</div>
+                    <div style={{ fontSize:11, color:T.textSec }}>{a.size?`${(a.size/1024).toFixed(0)} KB`:""}</div>
                   </div>
                   <Download size={14} style={{ color:T.textSec, flexShrink:0 }}/>
                 </a>
-              ));
+              );});
             })()}
           </div>
         ) : (
           <div style={{ flex:1, overflowY:"auto", padding:12, display:"flex", flexDirection:"column", gap:8 }}>
             {(() => {
-              const audios = galleryMedia.filter(m=>m.attachmentType?.startsWith("audio/"));
+              const audios = galleryMedia.filter(m => getMessageAttachment(m)?.type.startsWith("audio/"));
               if (!audios.length) return <div style={{ textAlign:"center", color:T.textSec, marginTop:50, fontSize:13 }}>No voice messages yet</div>;
-              return audios.map(m=>(
+              return audios.map(m=>{
+                const a = getMessageAttachment(m)!;
+                return (
                 <div key={m.id} style={{ padding:"10px 12px", borderRadius:10, background:T.inputBg }}>
                   <div style={{ fontSize:11, color:T.textSec, marginBottom:6 }}>{fmtFull(m.createdAt)}</div>
-                  <AudioPlayer src={withToken(m.attachmentUrl)} dark={dk} mine={false}/>
+                  <AudioPlayer src={withToken(a.url)} dark={dk} mine={false}/>
                 </div>
-              ));
+              );});
             })()}
           </div>
         )}

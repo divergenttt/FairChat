@@ -6,6 +6,7 @@ import { FAV_GRADIENT } from "./constants";
 import { BtnToolbar } from "./ui";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
+import { getMessageAttachment, getMessageCaption } from "@/lib/attachmentMessage";
 
 export default function ChatArea() {
   const {
@@ -276,8 +277,14 @@ function ProfileDetailsPanel({
   withToken: (url: any) => string;
   openGallery: () => void;
 }) {
-  const imgs = messages.filter(m => m.attachmentUrl && m.attachmentType?.startsWith("image/"));
-  const files = messages.filter(m => m.attachmentUrl && !m.attachmentType?.startsWith("image/"));
+  const imgs = messages.filter(m => {
+    const a = getMessageAttachment(m);
+    return !!a?.type.startsWith("image/");
+  });
+  const files = messages.filter(m => {
+    const a = getMessageAttachment(m);
+    return !!a && !a.type.startsWith("image/");
+  });
   const displayedImgs = imgs.slice(0, 9);
 
   const links = useMemo(() => {
@@ -285,7 +292,7 @@ function ProfileDetailsPanel({
     const seen = new Set<string>();
     const out: { url: string; host: string; msgId: string }[] = [];
     for (const m of messages) {
-      const text: string = m.decrypted || "";
+      const text: string = getMessageCaption(m) || "";
       if (!text) continue;
       const matches = text.match(urlRe);
       if (!matches) continue;
@@ -372,15 +379,16 @@ function ProfileDetailsPanel({
             {files.length === 0
               ? <div style={{ fontSize:12, opacity:0.5, padding:"6px 2px" }}>No files yet</div>
               : files.map(m => {
-                  const { kind, grad } = fileKind(m.attachmentName);
+                  const a = getMessageAttachment(m)!;
+                  const { kind, grad } = fileKind(a.name);
                   return (
-                    <a key={m.id} href={withToken(m.attachmentUrl)} download={m.attachmentName || true} target="_blank" rel="noreferrer" className="fc-file-row">
+                    <a key={m.id} href={withToken(a.url)} download={a.name || true} target="_blank" rel="noreferrer" className="fc-file-row">
                       <div className="fc-file-row__icon" style={{ background: `linear-gradient(135deg, ${grad[0]}, ${grad[1]})` }}>
                         {kind}
                       </div>
                       <div style={{ minWidth:0 }}>
-                        <div className="fc-file-row__name">{m.attachmentName || "File"}</div>
-                        <div className="fc-file-row__meta">{fmtBytes(m.attachmentSize)}</div>
+                        <div className="fc-file-row__name">{a.name || "File"}</div>
+                        <div className="fc-file-row__meta">{fmtBytes(a.size)}</div>
                       </div>
                       <span className="fc-file-row__download"><Download size={14}/></span>
                     </a>
@@ -395,12 +403,14 @@ function ProfileDetailsPanel({
               : (
                 <>
                   <div className="fc-media-grid">
-                    {displayedImgs.map(m => (
-                      <button key={m.id} className="fc-media-tile" onClick={() => onOpenLightbox(withToken(m.attachmentUrl), m)}>
-                        <img src={withToken(m.attachmentUrl)} alt=""
+                    {displayedImgs.map(m => {
+                      const a = getMessageAttachment(m)!;
+                      return (
+                      <button key={m.id} className="fc-media-tile" onClick={() => onOpenLightbox(withToken(a.url), m)}>
+                        <img src={withToken(a.url)} alt=""
                           onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
                       </button>
-                    ))}
+                    );})}
                   </div>
                   {imgs.length > 9 && (
                     <button onClick={openGallery}

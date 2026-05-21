@@ -412,7 +412,10 @@ router.get("/media/:userId", async (req: Request, res: Response) => {
   const { userId } = req.params as { userId: string };
   const rows = await db.execute(sql`
     SELECT * FROM messages
-    WHERE attachment_url IS NOT NULL
+    WHERE (
+      attachment_url IS NOT NULL
+      OR encrypted_content LIKE 'e1:%'
+    )
       AND ((sender_id = ${currentUser.id} AND recipient_id = ${userId})
         OR (sender_id = ${userId} AND recipient_id = ${currentUser.id}))
     ORDER BY created_at DESC LIMIT 200
