@@ -1,0 +1,497 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: FairChat API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication and registration
+  - name: users
+    description: User operations
+  - name: messages
+    description: Message operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/validate-invite:
+    post:
+      operationId: validateInviteCode
+      tags: [auth]
+      summary: Validate an invite code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateInviteRequest"
+      responses:
+        "200":
+          description: Invite code is valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateInviteResponse"
+        "400":
+          description: Invalid invite code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/check-username:
+    post:
+      operationId: checkUsername
+      tags: [auth]
+      summary: Check if username is available
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckUsernameRequest"
+      responses:
+        "200":
+          description: Username availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckUsernameResponse"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Registration error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/search:
+    get:
+      operationId: searchUsers
+      tags: [users]
+      summary: Search users by username
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+
+  /users/{username}:
+    get:
+      operationId: getUserByUsername
+      tags: [users]
+      summary: Get a user by username
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /messages/conversations:
+    get:
+      operationId: getConversations
+      tags: [messages]
+      summary: Get all conversations for current user
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+
+  /messages/{recipientId}:
+    get:
+      operationId: getMessages
+      tags: [messages]
+      summary: Get messages with a specific user
+      parameters:
+        - name: recipientId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: before
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Message history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message to a user
+      parameters:
+        - name: recipientId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /invite/generate:
+    post:
+      operationId: generateInviteCode
+      tags: [auth]
+      summary: Generate an invite code for the current user
+      responses:
+        "201":
+          description: Invite code generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCode"
+
+  /invite/list:
+    get:
+      operationId: listMyInviteCodes
+      tags: [auth]
+      summary: List invite codes created by current user
+      responses:
+        "200":
+          description: List of invite codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InviteCode"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    ValidateInviteRequest:
+      type: object
+      properties:
+        code:
+          type: string
+      required:
+        - code
+
+    ValidateInviteResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        invitedBy:
+          type: string
+          nullable: true
+        invitedByDisplayName:
+          type: string
+          nullable: true
+      required:
+        - valid
+
+    CheckUsernameRequest:
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+        - username
+
+    CheckUsernameResponse:
+      type: object
+      properties:
+        available:
+          type: boolean
+      required:
+        - available
+
+    RegisterRequest:
+      type: object
+      properties:
+        inviteCode:
+          type: string
+        displayName:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        publicKey:
+          type: string
+      required:
+        - inviteCode
+        - displayName
+        - username
+        - password
+        - publicKey
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - token
+        - user
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        publicKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        isOnline:
+          type: boolean
+      required:
+        - id
+        - username
+        - displayName
+        - publicKey
+        - createdAt
+        - isOnline
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        senderId:
+          type: integer
+        recipientId:
+          type: integer
+        encryptedContent:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - senderId
+        - recipientId
+        - encryptedContent
+        - createdAt
+
+    SendMessageRequest:
+      type: object
+      properties:
+        encryptedContent:
+          type: string
+      required:
+        - encryptedContent
+
+    Conversation:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserProfile"
+        lastMessage:
+          $ref: "#/components/schemas/Message"
+          nullable: true
+        unreadCount:
+          type: integer
+      required:
+        - user
+        - unreadCount
+
+    InviteCode:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        createdBy:
+          type: integer
+        usedBy:
+          type: integer
+          nullable: true
+        usedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - code
+        - createdBy
+        - createdAt

@@ -1,0 +1,14 @@
+packages:
+  "framer-motion": "Animations for message bubbles and page transitions"
+  "date-fns": "Formatting message timestamps"
+  "clsx": "Utility for conditionally joining classNames"
+  "tailwind-merge": "Utility for merging tailwind classes without style conflicts"
+  "lucide-react": "Beautiful consistent icons for the messenger"
+  "@radix-ui/react-dialog": "Accessible modal dialogs for settings"
+  "@radix-ui/react-slot": "For button component composition"
+  "@radix-ui/react-avatar": "Accessible avatars for chat"
+
+notes:
+  - Frontend fetch calls are intercepted to append the Authorization token automatically.
+  - Encryption is stubbed using Base64 + URI Encoding for the MVP to ensure end-to-end usability without crypto complexity.
+  - WebSocket uses window.location.host to dynamically connect to the same host.
