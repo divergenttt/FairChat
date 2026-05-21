@@ -27,8 +27,9 @@ Schema source of truth: `artifacts/api-server/src/schema.ts`.
 ## 2. Railway (API)
 
 1. New project → deploy from GitHub, **root directory** = monorepo root.
-2. Railway reads `railway.toml` (build + start + healthcheck `/api/health`).
-3. Variables (required):
+2. Railway reads `railway.toml` (build + start + healthcheck `/api/health`) and `nixpacks.toml` (Node 20, pnpm 11.1.3 via Corepack, `pnpm install --no-frozen-lockfile`).
+3. Root `package.json` must include `"packageManager": "pnpm@11.1.3"` (Corepack fallback).
+4. Variables (required):
 
 | Variable | Example |
 |----------|---------|
@@ -41,8 +42,8 @@ Schema source of truth: `artifacts/api-server/src/schema.ts`.
 
 Optional: `DATA_DIR` (uploads; use a volume for persistence), `LOG_LEVEL`, `SEED_ADMIN_PASSWORD`.
 
-4. Deploy and note the public URL, e.g. `https://fairchat-api.up.railway.app`.
-5. Verify: `curl https://<railway-host>/api/health`
+5. Deploy and note the public URL, e.g. `https://fairchat-api.up.railway.app`.
+6. Verify: `curl https://<railway-host>/api/health`
 
 ## 3. Vercel (frontend)
 

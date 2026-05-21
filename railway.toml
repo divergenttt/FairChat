@@ -3,7 +3,8 @@
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build"
+# Install runs in nixpacks.toml (pnpm 11.1.3, --no-frozen-lockfile). Build only api-server here.
+buildCommand = "pnpm --filter @workspace/api-server run build"
 
 [deploy]
 startCommand = "pnpm --filter @workspace/api-server run start"

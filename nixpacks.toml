@@ -1,0 +1,11 @@
+# Railway Nixpacks — pin Node 20 + pnpm 11.1.3 before install (avoids lockfile/overrides mismatch)
+[variables]
+NIXPACKS_NODE_VERSION = "20"
+
+[phases.install]
+cmds = [
+  "corepack enable",
+  "corepack prepare pnpm@11.1.3 --activate",
+  "pnpm --version",
+  "pnpm install --no-frozen-lockfile",
+]
