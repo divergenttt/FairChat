@@ -4,6 +4,13 @@ packages:
   - lib/integrations/*
   - scripts
 
+allowBuilds:
+  bcrypt: true
+  bufferutil: true
+  esbuild: true
+  keccak: true
+  utf-8-validate: true
+
 autoInstallPeers: false
 
 catalog:
