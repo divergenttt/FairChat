@@ -11,6 +11,11 @@ if (apiServerUrl) {
     source: "/api/:path*",
     destination: `${apiServerUrl}/api/:path*`,
   });
+  // Legacy / mistaken client paths (/uploads/...) — static files live at /api/uploads/ on Railway
+  rewrites.push({
+    source: "/uploads/:path*",
+    destination: `${apiServerUrl}/api/uploads/:path*`,
+  });
 }
 
 // SPA (wouter) — without this, /register and /chat return Vercel 404 NOT_FOUND (applied after /api rule)

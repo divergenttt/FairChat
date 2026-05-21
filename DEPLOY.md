@@ -96,7 +96,7 @@ VITE_WALLETCONNECT_PROJECT_ID=... pnpm run build && pnpm run serve
 ## Files added for deploy
 
 - `railway.toml` — API build/start/health
-- `artifacts/fairchat/vercel.ts` — Vercel `/api` rewrites from `API_SERVER_URL`
+- `artifacts/fairchat/vercel.ts` — Vercel `/api` and `/uploads` → Railway (`/api/uploads/` on API) rewrites from `API_SERVER_URL`
 - `artifacts/fairchat/src/lib/apiConfig.ts` — `VITE_API_URL`, `VITE_WS_URL`, Orval `setBaseUrl`
 - `artifacts/api-server/src/lib/allowedOrigins.ts` — `FRONTEND_URL` / `ALLOWED_ORIGINS`
 - `GET /api/auth/ws-token` — 5-minute JWT for cross-host WebSocket
