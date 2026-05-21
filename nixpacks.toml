@@ -1,6 +1,6 @@
-# Railway Nixpacks — pin Node 20 + pnpm 11.1.3 before install (avoids lockfile/overrides mismatch)
+# Railway Nixpacks — pin Node 22 + pnpm 11.1.3 before install (avoids lockfile/overrides mismatch)
 [variables]
-NIXPACKS_NODE_VERSION = "20"
+NIXPACKS_NODE_VERSION = "22"
 
 [phases.install]
 cmds = [
