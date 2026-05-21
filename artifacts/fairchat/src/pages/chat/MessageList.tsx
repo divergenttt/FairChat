@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { apiUrl } from "@/lib/apiConfig";
 import { getMessageAttachment, getMessageCaption, attachmentPreviewLabel } from "@/lib/attachmentMessage";
+import { SecureAttachmentImage, SecureAttachmentAudio, SecureAttachmentFileLink } from "./SecureAttachment";
 import { encryptPaymentPayload, tryParsePaymentPayload } from "@/lib/paymentMessage";
 import { getCachedPrivateKey } from "@/lib/crypto";
 import { Check, Reply, Paperclip, Flame, RotateCw, ArrowUpRight, ArrowDownLeft, ExternalLink, CheckCircle2, X } from "lucide-react";
@@ -22,7 +23,7 @@ export default function MessageList() {
     hoveredMsgId, setHoveredMsgId,
     scrollToMsg, setReplyTo, startReply,
     setLightboxUrl, setLightboxMsg, setLightboxRotation, setLightboxMoreOpen,
-    linkPreviews, otherTyping, withToken,
+    linkPreviews, otherTyping, withToken, pubKeyMapRef,
     handleSendMessage, msgCacheRef,
     setShowPaymentModal, setPaymentPrefill,
     deletingIds,
@@ -81,6 +82,10 @@ export default function MessageList() {
             const isSel = selIds.has(msg.id);
             const att = getMessageAttachment(msg);
             const caption = getMessageCaption(msg);
+            const otherUserId = msg.senderId === user.id ? msg.recipientId : msg.senderId;
+            const otherPubKey =
+              pubKeyMapRef.current.get(otherUserId ?? "") ??
+              (otherUserId === selectedUser?.id ? selectedUser.publicKey : undefined);
             const isMatch = chatQ.trim() && (caption || msg.decrypted || "").toLowerCase().includes(chatQ.toLowerCase());
             const isCurrentMatch = chatMatches[chatMatchIdx]?.id === msg.id;
             const dx = dragInfo?.msgId===msg.id ? dragInfo.dx : 0;
@@ -364,7 +369,7 @@ export default function MessageList() {
                       <div style={{ position:"relative", display:"flex", flexDirection:mine?"row-reverse":"row", alignItems:"flex-end", gap:4 }}>
                         <div
                           className={(isImageOnly || isBigEmoji) ? "fc-bubble--emoji" : (mine ? "fc-bubble--out" : "fc-bubble--in")}
-                          onClick={e=>{ e.stopPropagation(); if(longPressActivated.current) return; if(selMode){ toggleSel(msg.id); return; } if(isImageOnly && att){ setLightboxUrl(withToken(att.url)); setLightboxMsg(msg); setLightboxRotation(0); setLightboxMoreOpen(false); return; } const menuW=220; const menuH=mine?368:328; let left=mine?e.clientX-menuW:e.clientX; let top=e.clientY+10; if(top+menuH>window.innerHeight-8) top=e.clientY-menuH-10; left=Math.max(8,Math.min(left,window.innerWidth-menuW-8)); top=Math.max(8,top); setPickerPos({left,top}); setReactionPickerMsgId(p=>p===msg.id?null:msg.id); }}
+                          onClick={e=>{ e.stopPropagation(); if(longPressActivated.current) return; if(selMode){ toggleSel(msg.id); return; } if(isImageOnly && att){ return; } const menuW=220; const menuH=mine?368:328; let left=mine?e.clientX-menuW:e.clientX; let top=e.clientY+10; if(top+menuH>window.innerHeight-8) top=e.clientY-menuH-10; left=Math.max(8,Math.min(left,window.innerWidth-menuW-8)); top=Math.max(8,top); setPickerPos({left,top}); setReactionPickerMsgId(p=>p===msg.id?null:msg.id); }}
                           onDoubleClick={e=>{ e.stopPropagation(); setReactionPickerMsgId(null); setPickerPos(null); enterSelMode(msg.id); }}
                           style={{
                             padding: (isImageOnly || isBigEmoji) ? 0 : "8px 14px",
@@ -393,36 +398,30 @@ export default function MessageList() {
                           {att && (() => {
                             const isImage = att.type.startsWith("image/");
                             const isAudio = att.type.startsWith("audio/");
-                            const url = withToken(att.url);
                             if (isImage) return (
                               <div style={{ display:"inline-block", marginTop: caption ? 6 : 0, borderRadius:8, overflow:"hidden" }}>
-                                <img src={url} alt={att.name ?? "image"}
-                                  loading="lazy"
-                                  className={loadedImgsRef.current.has(url) ? "" : "img-blur"}
-                                  onLoad={e=>{ loadedImgsRef.current.add(url); e.currentTarget.classList.add("img-loaded"); }}
+                                <SecureAttachmentImage
+                                  att={att}
+                                  otherUserPubKey={otherPubKey}
+                                  alt={att.name}
                                   onPointerDown={e => e.stopPropagation()}
-                                  onClick={e=>{ e.stopPropagation(); setLightboxUrl(url); setLightboxMsg(msg); setLightboxRotation(0); setLightboxMoreOpen(false); }}
-                                  style={{ maxWidth:240, maxHeight:240, display:"block", borderRadius:8, objectFit:"cover", cursor:"zoom-in" }}/>
+                                  onOpen={(blobUrl) => {
+                                    setLightboxUrl(blobUrl);
+                                    setLightboxMsg(msg);
+                                    setLightboxRotation(0);
+                                    setLightboxMoreOpen(false);
+                                  }}
+                                  style={{ maxWidth:240, maxHeight:240 }}
+                                />
                               </div>
                             );
                             if (isAudio) return (
                               <div style={{ marginTop: caption && caption !== "[Voice message]" ? 6 : 0 }} onClick={e=>e.stopPropagation()}>
-                                <AudioPlayer src={url} dark={dk} mine={mine}/>
+                                <SecureAttachmentAudio att={att} otherUserPubKey={otherPubKey} dark={dk} mine={mine}/>
                               </div>
                             );
                             return (
-                              <a href={url} target="_blank" rel="noreferrer" download={att.name ?? "file"} onClick={e=>e.stopPropagation()}
-                                style={{ display:"flex", alignItems:"center", gap:8, marginTop: caption ? 6 : 0, padding:"8px 10px", borderRadius:10,
-                                         background: mine?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.06)",
-                                         textDecoration:"none", color:"inherit", cursor:"pointer" }}>
-                                <div style={{ width:32, height:32, borderRadius:8, background: mine?"rgba(255,255,255,0.2)":"var(--fc-accent)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                                  <Paperclip size={16} style={{ color:"#fff" }}/>
-                                </div>
-                                <div style={{ overflow:"hidden" }}>
-                                  <div style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:160 }}>{att.name ?? "file"}</div>
-                                  <div style={{ fontSize:11, opacity:0.7 }}>{att.size ? `${(att.size/1024).toFixed(0)} KB` : ""}</div>
-                                </div>
-                              </a>
+                              <SecureAttachmentFileLink att={att} otherUserPubKey={otherPubKey} mine={mine} marginTop={caption ? 6 : 0} />
                             );
                           })()}
 

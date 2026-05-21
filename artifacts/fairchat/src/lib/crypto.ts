@@ -180,6 +180,59 @@ export function encryptMessage(
 const DECRYPT_FORMAT_ERROR =
   "[Ошибка дешифрации: нешифрованный или некорректный формат сообщения]";
 
+/** Magic prefix for E2E-encrypted file blobs stored on the server. */
+export const FILE_CIPHERTEXT_PREFIX = "e1f:";
+
+export function encryptFileBytes(
+  data: Uint8Array,
+  recipientPubKeyB64: string,
+  myPrivKeyB64: string,
+): Uint8Array {
+  if (!sodium) throw new Error("Encryption failed — crypto not initialized");
+  const s = sodium;
+  const nonce = s.randombytes_buf(s.crypto_box_NONCEBYTES);
+  const ct = s.crypto_box_easy(data, nonce, fromb64(recipientPubKeyB64), fromb64(myPrivKeyB64));
+  const combined = new Uint8Array(nonce.length + ct.length);
+  combined.set(nonce);
+  combined.set(ct, nonce.length);
+  const prefix = s.from_string(FILE_CIPHERTEXT_PREFIX);
+  const out = new Uint8Array(prefix.length + combined.length);
+  out.set(prefix);
+  out.set(combined, prefix.length);
+  return out;
+}
+
+export function decryptFileBytes(
+  data: Uint8Array,
+  otherUserPubKeyB64: string,
+  myPrivKeyB64: string,
+): Uint8Array {
+  if (!sodium) throw new Error("Decryption failed — crypto not initialized");
+  const s = sodium;
+  const prefix = s.from_string(FILE_CIPHERTEXT_PREFIX);
+  if (data.length < prefix.length + s.crypto_box_NONCEBYTES + s.crypto_box_MACBYTES) {
+    throw new Error("Invalid encrypted file");
+  }
+  for (let i = 0; i < prefix.length; i++) {
+    if (data[i] !== prefix[i]) throw new Error("Not an encrypted file");
+  }
+  const combined = data.slice(prefix.length);
+  const nonce = combined.slice(0, s.crypto_box_NONCEBYTES);
+  const ct = combined.slice(s.crypto_box_NONCEBYTES);
+  const opened = s.crypto_box_open_easy(ct, nonce, fromb64(otherUserPubKeyB64), fromb64(myPrivKeyB64));
+  return new Uint8Array(opened);
+}
+
+export function isEncryptedFileBlob(data: Uint8Array): boolean {
+  if (!sodium || data.length < 4) return false;
+  const prefix = sodium.from_string(FILE_CIPHERTEXT_PREFIX);
+  if (data.length < prefix.length) return false;
+  for (let i = 0; i < prefix.length; i++) {
+    if (data[i] !== prefix[i]) return false;
+  }
+  return true;
+}
+
 export function decryptMessage(
   encrypted: string,
   otherUserPubKeyB64?: string,

@@ -11,6 +11,7 @@ import {
   getMessageAttachment,
   attachmentPreviewLabel,
   tryParseAttachmentPayload,
+  uploadEncryptedFile,
 } from "@/lib/attachmentMessage";
 import { idbGet, idbSet, idbClear, IDB_MSGS, IDB_CONVS, IDB_KEYS } from "@/lib/idb";
 import { fmtTime } from "./chat/helpers";
@@ -139,7 +140,9 @@ export default function ChatPage() {
   }, [token, wagmiConnected, wagmiAddress, user, updateUser, wagmiDisconnect]);
 
   const withToken = useCallback((url: string | null | undefined): string => {
-    return url ?? "";
+    if (!url) return "";
+    if (url.startsWith("/api/")) return apiUrl(url);
+    return url;
   }, []);
 
   const [conversations, setConversations] = useState<ConvItem[]>([]);
@@ -1019,30 +1022,39 @@ export default function ChatPage() {
       const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mr.mimeType });
       setAttachmentUploading(true);
       try {
-        const fd = new FormData(); fd.append("file", file);
-        const res = await fetch(apiUrl("/api/upload"), { method: "POST", credentials: "include", body: fd });
-        if (res.ok) {
-          const { url, name, type: ftype, size } = await res.json();
-          const su = selectedUserRef.current; if (!su) return;
-          await fetchFreshKey(su.id);
-          const otherPk = pubKeyMapRef.current.get(su.id);
-          const payload: AttachmentPayload = { url, name, type: ftype, size, caption: "[Voice message]" };
-          const encContent = encryptAttachmentPayload(payload, otherPk!, myPrivKeyRef.current);
-          if (!encContent) { alert("Encryption failed — message not sent"); return; }
-          const postRes = await fetch(apiUrl(`/api/messages/${su.id}`), { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-            body: JSON.stringify({ encryptedContent: encContent }) });
-          if (postRes.ok && otherPk && myPrivKeyRef.current) {
-            const raw = await postRes.json();
-            const decrypted = decryptMessage(raw.encryptedContent, otherPk, myPrivKeyRef.current);
-            const newMsg = { ...raw, decrypted };
-            if (su.id === selectedUserRef.current?.id) {
-              setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
-              newMsgIdsRef.current.add(newMsg.id);
-            }
-            const cached = msgCacheRef.current.get(su.id) ?? [];
-            if (!cached.some(m => m.id === newMsg.id)) msgCacheRef.current.set(su.id, [...cached, newMsg]);
-            updateConvLocally(su.id, fmtMsgPreview(newMsg.decrypted, newMsg.messageType) ?? "🎤 Voice message", newMsg.createdAt);
+        const su = selectedUserRef.current; if (!su) return;
+        await fetchFreshKey(su.id);
+        const otherPk = pubKeyMapRef.current.get(su.id);
+        if (!otherPk || !myPrivKeyRef.current) { alert("Encryption failed — message not sent"); return; }
+        const uploaded = await uploadEncryptedFile(file, otherPk, myPrivKeyRef.current, file.name);
+        if (!uploaded) { alert("Upload failed — voice message not sent"); return; }
+        const { url, name, type: ftype, size, fileEncrypted } = uploaded;
+        const payload: AttachmentPayload = { url, name, type: ftype, size, caption: "[Voice message]", fileEncrypted };
+        const encContent = encryptAttachmentPayload(payload, otherPk, myPrivKeyRef.current);
+        if (!encContent) { alert("Encryption failed — message not sent"); return; }
+        const postRes = await fetch(apiUrl(`/api/messages/${su.id}`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Requested-With": "FairChat" },
+          credentials: "include",
+          body: JSON.stringify({
+            encryptedContent: encContent,
+            attachmentUrl: url,
+            attachmentName: name,
+            attachmentType: ftype,
+            attachmentSize: size,
+          }),
+        });
+        if (postRes.ok && otherPk && myPrivKeyRef.current) {
+          const raw = await postRes.json();
+          const decrypted = decryptMessage(raw.encryptedContent, otherPk, myPrivKeyRef.current);
+          const newMsg = { ...raw, decrypted };
+          if (su.id === selectedUserRef.current?.id) {
+            setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
+            newMsgIdsRef.current.add(newMsg.id);
           }
+          const cached = msgCacheRef.current.get(su.id) ?? [];
+          if (!cached.some(m => m.id === newMsg.id)) msgCacheRef.current.set(su.id, [...cached, newMsg]);
+          updateConvLocally(su.id, fmtMsgPreview(newMsg.decrypted, newMsg.messageType) ?? "🎤 Voice message", newMsg.createdAt);
         }
       } finally { setAttachmentUploading(false); }
     };
@@ -1152,20 +1164,37 @@ export default function ChatPage() {
     if (!attachmentFile || !selectedUser) return;
     setAttachmentUploading(true);
     try {
-      const formData = new FormData(); formData.append("file", attachmentFile);
-      const uploadRes = await fetch(apiUrl("/api/upload"), { method: "POST", credentials: "include", body: formData });
-      if (!uploadRes.ok) { setAttachmentUploading(false); return; }
-      const { url, name, type, size } = await uploadRes.json();
       const text = messageInput.trim();
       await fetchFreshKey(selectedUser.id);
       const otherPk = pubKeyMapRef.current.get(selectedUser.id);
-      const payload: AttachmentPayload = { url, name, type, size, ...(text ? { caption: text } : {}) };
-      const encrypted = encryptAttachmentPayload(payload, otherPk!, myPrivKeyRef.current);
+      if (!otherPk || !myPrivKeyRef.current) {
+        alert("Encryption failed — message not sent");
+        setAttachmentUploading(false);
+        return;
+      }
+      const uploaded = await uploadEncryptedFile(attachmentFile, otherPk, myPrivKeyRef.current, attachmentFile.name);
+      if (!uploaded) {
+        alert("Upload failed — attachment not sent");
+        setAttachmentUploading(false);
+        return;
+      }
+      const { url, name, type, size, fileEncrypted } = uploaded;
+      const payload: AttachmentPayload = { url, name, type, size, fileEncrypted, ...(text ? { caption: text } : {}) };
+      const encrypted = encryptAttachmentPayload(payload, otherPk, myPrivKeyRef.current);
       if (!encrypted) { alert("Encryption failed — message not sent"); setAttachmentUploading(false); return; }
       const replyToId = replyTo?.id ?? undefined;
       const res = await fetch(apiUrl(`/api/messages/${selectedUser.id}`), {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ encryptedContent: encrypted, replyToId }),
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Requested-With": "FairChat" },
+        credentials: "include",
+        body: JSON.stringify({
+          encryptedContent: encrypted,
+          replyToId,
+          attachmentUrl: url,
+          attachmentName: name,
+          attachmentType: type,
+          attachmentSize: size,
+        }),
       });
       if (res.ok) {
         const raw = await res.json();

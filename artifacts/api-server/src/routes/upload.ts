@@ -31,6 +31,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/octet-stream",
 ]);
 
 export const INLINE_SAFE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
@@ -75,15 +76,29 @@ async function validateUploadedBuffer(
   return { ok: true, mime: detected.mime };
 }
 
+const E1F_MAGIC = Buffer.from("e1f:");
+
+function isE2EEncryptedUpload(buffer: Buffer, flaggedEncrypted: boolean): boolean {
+  if (flaggedEncrypted) return true;
+  return buffer.length >= E1F_MAGIC.length && buffer.subarray(0, E1F_MAGIC.length).equals(E1F_MAGIC);
+}
+
 router.post("/", upload.single("file"), async (req: Request, res: Response) => {
   const user = await getAuth(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
   const filename = buildFilename(req.file.originalname);
+  const flaggedEncrypted =
+    req.body?.encrypted === "1" ||
+    req.body?.encrypted === true ||
+    String(req.headers["x-fairchat-encrypted"] ?? "") === "1";
 
   try {
-    const validation = await validateUploadedBuffer(req.file.buffer, req.file.mimetype);
+    const e2eFile = isE2EEncryptedUpload(req.file.buffer, flaggedEncrypted);
+    const validation = e2eFile
+      ? ({ ok: true as const, mime: "application/octet-stream" })
+      : await validateUploadedBuffer(req.file.buffer, req.file.mimetype);
     if (!validation.ok) {
       return res.status(400).json({ error: validation.error });
     }

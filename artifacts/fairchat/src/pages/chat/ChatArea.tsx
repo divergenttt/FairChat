@@ -7,6 +7,7 @@ import { BtnToolbar } from "./ui";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import { getMessageAttachment, getMessageCaption } from "@/lib/attachmentMessage";
+import { SecureAttachmentImage, SecureAttachmentFileLink } from "./SecureAttachment";
 
 export default function ChatArea() {
   const {
@@ -22,7 +23,7 @@ export default function ChatArea() {
     handleCopySel, handleDeleteSel, handleDeleteMsgs,
     setIsForwardOpen, setFwdQuery, setCtxMenu, setReactionPickerMsgId, setPickerPos,
     otherTyping,
-    withToken, setLightboxUrl, setLightboxMsg, setLightboxRotation, setLightboxMoreOpen,
+    withToken, setLightboxUrl, setLightboxMsg, setLightboxRotation, setLightboxMoreOpen, pubKeyMapRef,
   } = useChatContext();
 
   const _hasMoreRef = hasMoreRef as React.MutableRefObject<Map<string, boolean>>;
@@ -179,8 +180,9 @@ export default function ChatArea() {
               onPay={() => { setShowProfile(false); setShowPaymentsView(true); }}
               onClose={() => setShowProfile(false)}
               onOpenLightbox={(url, m) => { setLightboxUrl(url); setLightboxMsg(m); setLightboxRotation(0); }}
-              withToken={withToken}
               openGallery={openGallery}
+              userId={user.id}
+              otherPubKey={pubKeyMapRef.current.get(selectedUser.id) ?? selectedUser.publicKey}
               dk={dk}
             />
           )}
@@ -260,10 +262,13 @@ function DetailsSection({
 
 function ProfileDetailsPanel({
   selectedUser, messages, isMuted, isBlocked,
-  onMute, onBlock, onSearch, onPay, onClose, onOpenLightbox, withToken, openGallery,
+  onMute, onBlock, onSearch, onPay, onClose, onOpenLightbox, openGallery,
+  userId, otherPubKey,
 }: {
   selectedUser: any;
   messages: any[];
+  userId: string;
+  otherPubKey?: string;
   T?: any;
   dk?: boolean;
   isMuted: boolean;
@@ -274,7 +279,6 @@ function ProfileDetailsPanel({
   onPay: () => void;
   onClose: () => void;
   onOpenLightbox: (url: string, m: any) => void;
-  withToken: (url: any) => string;
   openGallery: () => void;
 }) {
   const imgs = messages.filter(m => {
@@ -380,18 +384,10 @@ function ProfileDetailsPanel({
               ? <div style={{ fontSize:12, opacity:0.5, padding:"6px 2px" }}>No files yet</div>
               : files.map(m => {
                   const a = getMessageAttachment(m)!;
-                  const { kind, grad } = fileKind(a.name);
                   return (
-                    <a key={m.id} href={withToken(a.url)} download={a.name || true} target="_blank" rel="noreferrer" className="fc-file-row">
-                      <div className="fc-file-row__icon" style={{ background: `linear-gradient(135deg, ${grad[0]}, ${grad[1]})` }}>
-                        {kind}
-                      </div>
-                      <div style={{ minWidth:0 }}>
-                        <div className="fc-file-row__name">{a.name || "File"}</div>
-                        <div className="fc-file-row__meta">{fmtBytes(a.size)}</div>
-                      </div>
-                      <span className="fc-file-row__download"><Download size={14}/></span>
-                    </a>
+                    <div key={m.id} style={{ padding: "4px 0" }}>
+                      <SecureAttachmentFileLink att={a} otherUserPubKey={otherPubKey} />
+                    </div>
                   );
                 })}
           </DetailsSection>
@@ -406,11 +402,16 @@ function ProfileDetailsPanel({
                     {displayedImgs.map(m => {
                       const a = getMessageAttachment(m)!;
                       return (
-                      <button key={m.id} className="fc-media-tile" onClick={() => onOpenLightbox(withToken(a.url), m)}>
-                        <img src={withToken(a.url)} alt=""
-                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
-                      </button>
-                    );})}
+                        <div key={m.id} className="fc-media-tile" style={{ padding: 0, border: "none", background: "transparent" }}>
+                          <SecureAttachmentImage
+                            att={a}
+                            otherUserPubKey={otherPubKey}
+                            onOpen={(blobUrl) => onOpenLightbox(blobUrl, m)}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                   {imgs.length > 9 && (
                     <button onClick={openGallery}
