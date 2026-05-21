@@ -2,7 +2,7 @@
 
 **End-to-end encrypted messenger with private crypto payments.**
 
-FairChat is an invite-only messaging app where your conversations and payments are private by design - not as an afterthought. Messages are encrypted on your device before they leave it. Payments can be sent confidentially, with no public trace on-chain.
+FairChat is a secure, decentralized-identity messaging app where your conversations and payments are private by design - not as an afterthought. Messages and files are encrypted on your device before they leave it. Payments can be sent confidentially, with no public trace on-chain.
 
 ---
 
@@ -12,17 +12,19 @@ FairChat is an invite-only messaging app where your conversations and payments a
 
 Every message - text, image, file, or voice — is encrypted on your device using **X25519 key exchange** (libsodium) before it's sent to the server. The server stores only ciphertext. Even if the database were compromised, messages would be unreadable without the recipient's private key.
 
-Your encryption keys are generated from a **12-word seed phrase** at registration and stored in your browser's IndexedDB - never sent to the server. The seed phrase is your backup: lose it, and no one (including us) can recover your messages.
+Your encryption keys are generated from a **12-word seed phrase** at registration and stored in your browser's IndexedDB — never sent to the server. The seed phrase is your backup: lose it, and no one (including us) can recover your messages.
 
-**Attachments are E2E encrypted too.** When you send a photo, file, or voice message, the attachment metadata (URL, filename, type, size) is encrypted into the message payload with the same X25519 key. The server never sees which file belongs to which conversation.
+**Attachments are E2E encrypted too.** When you send a photo, file, or voice message, the attachment metadata (URL, filename, type, size, caption) is encrypted into the message payload with the same X25519 key. The server and storage provider never see which file belongs to which conversation.
 
-### Payments
+### Zero-Knowledge Payments
 
 FairChat supports two payment modes:
 
 **Standard payments** - direct ERC-20 transfers on Base, Arbitrum, Ethereum Sepolia, and Arc (chainId 5042002). Fast, simple, on-chain.
 
 **Confidential payments** - powered by [FairBlock's StableTrust](https://fairblock.network) on Arc (chainId 1244). Transfers are encrypted using Fully Homomorphic Encryption (FHE) - the amount and parties are hidden from public view on-chain. For when financial privacy matters.
+
+**100% Private Invoices & Receipts.** Unlike typical Web3 messengers, FairChat secures your transaction metadata. Payment requests, declined status, and invoices are fully encrypted client-side (`e1:`). The server cannot view transaction details, payment amounts, or matching blockchain addresses in the chat logs. Transaction history is reconstructed safely out-of-band using shared cryptographic keys.
 
 Both modes are accessible directly from a conversation - no switching between apps.
 
@@ -38,13 +40,16 @@ FairChat is built with multiple layers of protection:
 
 | Layer | What it does |
 |---|---|
-| **E2E encryption** | Messages encrypted client-side with libsodium X25519 before upload |
-| **Invite-only registration** | No open signups - access requires an FC-XXXX invite code |
+| **E2E encryption** | Messages and attachments encrypted client-side with libsodium X25519 before upload |
+| **Strict Decryption Verification** | Rejects any unencrypted or improperly formatted payloads (no unsafe fallbacks) to prevent spoofing |
+| **Key Validation** | Backend strictly validates X25519 public keys (exactly 32-bytes) during registration to prevent DoS |
+| **IndexedDB Key Shredding** | Logging out completely wipes the private encryption keys from browser memory and IndexedDB |
+| **Protected DM Scope** | Messages can only be sent to mutually confirmed contacts to prevent spam and user enumeration |
 | **httpOnly cookie sessions** | Auth tokens are never accessible to JavaScript |
 | **Token revocation** | Logout instantly invalidates the session server-side |
 | **Key rotation protection** | Changing your encryption key requires a fresh login (within 2h) |
 | **Password change invalidation** | All existing sessions are revoked on password change |
-| **Timing attack mitigation** | Account recovery endpoints use fixed-delay responses to prevent user enumeration |
+| **Timing attack mitigation** | Account recovery endpoints use fixed-delay responses and unified returns to prevent user enumeration |
 | **Rate limiting** | Per-route limits on login (with progressive slowdown), registration, uploads, messages, and reactions |
 | **CSRF protection** | Origin + custom header validation on all mutating requests |
 | **File validation** | Magic bytes checked on upload - declared MIME type alone is not trusted |
@@ -71,12 +76,27 @@ For local development see [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ### Environment variables
 
-Copy `.env.example` in each package and fill in the values:
+To run the application, copy the example files and configure your local or production environment variables:
 
-```
-artifacts/api-server/.env.example  →  DATABASE_URL, JWT_SECRET, ALLOWED_ORIGINS
-artifacts/fairchat/.env.example    →  VITE_API_URL, VITE_WS_URL, VITE_WALLETCONNECT_PROJECT_ID
-```
+---
+
+### Environment variables
+
+Configure the environment variables for both packages:
+
+*   **Backend** (`artifacts/api-server/.env`):
+    ```env
+    DATABASE_URL="postgresql://user:password@localhost:5432/fairchat"
+    JWT_SECRET="your-super-secret-jwt-key"
+    ALLOWED_ORIGINS="http://localhost:5173,https://your-app.vercel.app"
+    ```
+
+*   **Frontend** (`artifacts/fairchat/.env`):
+    ```env
+    VITE_API_URL="http://localhost:5000"
+    VITE_WS_URL="ws://localhost:5000"
+    VITE_WALLETCONNECT_PROJECT_ID="your-walletconnect-project-id"
+    ```
 
 ---
 
@@ -92,6 +112,6 @@ artifacts/fairchat/.env.example    →  VITE_API_URL, VITE_WS_URL, VITE_WALLETCO
 
 ---
 
-## License
+##License
 
 MIT
