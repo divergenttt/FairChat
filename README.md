@@ -10,9 +10,9 @@ FairChat is a secure, decentralized-identity messaging app where your conversati
 
 ### Messaging
 
-Every message - text, image, file, or voice — is encrypted on your device using **X25519 key exchange** (libsodium) before it's sent to the server. The server stores only ciphertext. Even if the database were compromised, messages would be unreadable without the recipient's private key.
+Every message - text, image, file, or voice - is encrypted on your device using **X25519 key exchange** (libsodium) before it's sent to the server. The server stores only ciphertext. Even if the database were compromised, messages would be unreadable without the recipient's private key.
 
-Your encryption keys are generated from a **12-word seed phrase** at registration and stored in your browser's IndexedDB — never sent to the server. The seed phrase is your backup: lose it, and no one (including us) can recover your messages.
+Your encryption keys are generated from a **12-word seed phrase** at registration and stored in your browser's IndexedDB - never sent to the server. The seed phrase is your backup: lose it, and no one (including us) can recover your messages.
 
 **Attachments are E2E encrypted too.** When you send a photo, file, or voice message, the attachment metadata (URL, filename, type, size, caption) is encrypted into the message payload with the same X25519 key. The server and storage provider never see which file belongs to which conversation.
 
