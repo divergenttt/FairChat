@@ -1,0 +1,1213 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Brand accent — violet/pink "glass messenger" */
+  --fc-accent: #a78bfa;
+  --fc-accent-dk: #7c3aed;
+  --fc-accent-rgb: 167,139,250;
+  --fc-accent-gradient: linear-gradient(135deg, #a78bfa 0%, #ec4899 100%);
+  --fc-accent-glow: rgba(167, 139, 250, 0.45);
+
+  /* Glass surface tokens (dark) */
+  --fc-app-bg: #08070d;
+  --fc-glass-bg: rgba(22, 20, 34, 0.55);
+  --fc-glass-bg-soft: rgba(22, 20, 34, 0.35);
+  --fc-glass-bg-strong: rgba(22, 20, 34, 0.78);
+  --fc-glass-border: rgba(255, 255, 255, 0.09);
+  --fc-glass-highlight: rgba(255, 255, 255, 0.06);
+  --fc-glass-shadow: 0 30px 80px -20px rgba(0,0,0,0.55),
+                     0 2px 0 rgba(255,255,255,0.04) inset;
+}
+
+/* ── Aurora background (fixed, behind everything) ───────────────────────── */
+.fc-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--fc-app-bg);
+}
+.fc-aurora__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.85;
+  will-change: transform;
+  animation: fcDrift 32s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.fc-aurora__blob.b1 { left:10%; top:8%;   width:520px; height:520px;
+  background: radial-gradient(circle at 35% 30%, #8b5cf6, transparent 65%); animation-delay: 0s; }
+.fc-aurora__blob.b2 { left:78%; top:22%;  width:620px; height:620px;
+  background: radial-gradient(circle at 35% 30%, #ec4899, transparent 65%); animation-delay: -4s; }
+.fc-aurora__blob.b3 { left:32%; top:78%;  width:560px; height:560px;
+  background: radial-gradient(circle at 35% 30%, #22d3ee, transparent 65%); animation-delay: -8s; }
+.fc-aurora__blob.b4 { left:82%; top:82%;  width:480px; height:480px;
+  background: radial-gradient(circle at 35% 30%, #f59e0b, transparent 65%); animation-delay: -12s; }
+.fc-aurora__grain {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.fc-aurora.is-light .fc-aurora__blob { opacity: 0.55; }
+.fc-aurora.is-light { background: #e9e4f2; }
+.fc-aurora.is-light .fc-aurora__grain { opacity: 0.10; mix-blend-mode: multiply; }
+
+/* ── Glass-messenger app shell (floating panels with gap) ───────────────── */
+.fc-app {
+  display: grid !important;
+  grid-template-columns: 360px 1fr !important;
+  gap: 14px !important;
+  padding: 14px !important;
+  height: 100vh !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  background: transparent !important;
+}
+
+/* Glass panel — rounded standalone card with backdrop blur */
+.fc-glass-panel {
+  background: var(--fc-glass-bg) !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+  border: 0.75px solid var(--fc-glass-border) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--fc-glass-shadow) !important;
+  position: relative;
+  overflow: hidden;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  isolation: isolate;
+}
+.fc-glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--fc-glass-highlight), transparent 40%);
+  opacity: 0.55;
+  z-index: 0;
+}
+.fc-glass-panel > * { position: relative; z-index: 1; }
+
+/* Sidebar overrides — kill fixed width, kill border-right (gap separates) */
+.fc-sidebar.fc-glass-panel {
+  width: auto !important;
+  min-width: 0 !important;
+  border-right: 0 !important;
+  box-shadow: var(--fc-glass-shadow) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Chat panel: row container becomes glass card; inner header/composer get
+   transparent surfaces so the panel's own background wins */
+.fc-chat.fc-glass-panel {
+  display: flex !important;
+  flex-direction: column !important;
+}
+.fc-chat-header-shell {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 0.75px solid var(--fc-glass-border) !important;
+}
+.fc-composer-shell {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-top: 0.75px solid var(--fc-glass-border) !important;
+}
+.fc-profile-panel {
+  background: var(--fc-glass-bg-strong, rgba(22,20,34,0.78)) !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+}
+
+/* ── Message bubbles — gradient outgoing, glass incoming ─────────────────── */
+.fc-bubble--out {
+  background: var(--fc-accent-gradient) !important;
+  color: #fff !important;
+  border: 0.5px solid rgba(255,255,255,0.18) !important;
+  box-shadow: 0 8px 24px -8px var(--fc-accent-glow),
+              0 1px 0 rgba(255,255,255,0.18) inset !important;
+}
+.fc-bubble--in {
+  background: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.94) !important;
+  border: 0.5px solid rgba(255,255,255,0.10) !important;
+  box-shadow: 0 4px 14px -6px rgba(0,0,0,0.35) !important;
+}
+.fc-bubble--emoji {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ── Light theme overrides ──────────────────────────────────────────────── */
+.fc-app.is-light .fc-glass-panel {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border-color: rgba(20, 18, 40, 0.10) !important;
+  box-shadow: 0 30px 80px -20px rgba(60, 40, 110, 0.18),
+              0 2px 0 rgba(255, 255, 255, 0.45) inset !important;
+}
+.fc-app.is-light .fc-glass-panel::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.55), transparent 45%);
+  opacity: 0.65;
+}
+.fc-app.is-light .fc-chat-header-shell,
+.fc-app.is-light .fc-composer-shell {
+  border-color: rgba(20, 18, 40, 0.10) !important;
+}
+.fc-app.is-light .fc-bubble--in {
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #1b1730 !important;
+  border: 0.5px solid rgba(20, 18, 40, 0.08) !important;
+  box-shadow: 0 4px 14px -8px rgba(60, 40, 110, 0.18) !important;
+}
+.fc-app.is-light .fc-profile-panel {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(20, 18, 40, 0.10) !important;
+}
+
+/* Settings overlay backdrop — strong frost */
+.fc-overlay-backdrop {
+  background: rgba(0,0,0,0.4) !important;
+  backdrop-filter: blur(14px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(120%) !important;
+}
+.fc-app.is-light .fc-overlay-backdrop {
+  background: rgba(255,255,255,0.35) !important;
+}
+
+/* ── Mockup-style settings primitives ───────────────────────────────────── */
+@keyframes fcOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fcCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.fc-overlay-anim { animation: fcOverlayIn .25s ease both; }
+.fc-card-anim    { animation: fcCardIn .3s cubic-bezier(.2,.8,.2,1) both; }
+
+.fc-setting-group {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.05);
+  border: 0.75px solid var(--fc-glass-border);
+}
+.fc-app.is-light .fc-setting-group {
+  background: rgba(20,18,40,0.04);
+  border-color: rgba(20,18,40,0.10);
+}
+.fc-setting-group__label {
+  padding: 8px 10px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  font-weight: 500;
+}
+.fc-app.is-light .fc-setting-group__label { color: rgba(27,23,48,0.55); }
+
+.fc-setting-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 10px;
+  border-radius: 10px;
+  transition: background .14s;
+}
+.fc-setting-row--block { display: block; padding: 10px; }
+.fc-setting-row:hover { background: rgba(255,255,255,0.06); }
+.fc-app.is-light .fc-setting-row:hover { background: rgba(124,58,237,0.06); }
+.fc-setting-row__icon {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  display: grid; place-items: center;
+  background: color-mix(in oklab, var(--fc-accent) 15%, transparent);
+  color: var(--fc-accent);
+}
+.fc-setting-row__text { font-size: 13.5px; color: rgba(255,255,255,0.92); font-weight: 500; }
+.fc-app.is-light .fc-setting-row__text { color: #1b1730; }
+.fc-setting-row__hint { font-size: 11.5px; color: rgba(255,255,255,0.50); margin-top: 2px; }
+.fc-app.is-light .fc-setting-row__hint { color: rgba(27,23,48,0.55); }
+
+/* Toggle */
+.fc-toggle {
+  width: 38px; height: 22px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.10);
+  border: 0.75px solid var(--fc-glass-border);
+  position: relative;
+  cursor: pointer;
+  transition: background .18s;
+  flex-shrink: 0;
+}
+.fc-app.is-light .fc-toggle { background: rgba(20,18,40,0.10); border-color: rgba(20,18,40,0.10); }
+.fc-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  transition: transform .22s cubic-bezier(.2,.8,.2,1), background .18s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.fc-app.is-light .fc-toggle::after { background: #1b1730; }
+.fc-toggle.is-on {
+  background: var(--fc-accent);
+  border-color: transparent;
+}
+.fc-toggle.is-on::after { transform: translateX(16px); background: #fff; }
+
+/* Segmented */
+.fc-segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.10);
+  border: 0.75px solid var(--fc-glass-border);
+}
+.fc-app.is-light .fc-segmented { background: rgba(20,18,40,0.06); border-color: rgba(20,18,40,0.10); }
+.fc-segmented button {
+  padding: 6px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  transition: color .18s, background .18s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-weight: 500;
+}
+.fc-app.is-light .fc-segmented button { color: rgba(27,23,48,0.55); }
+.fc-segmented button.is-on {
+  background: var(--fc-accent);
+  color: #fff;
+  box-shadow: 0 4px 14px -6px var(--fc-accent-glow);
+}
+
+/* Swatch */
+.fc-swatch-row { display: flex; gap: 8px; padding: 2px 6px; flex-wrap: wrap; }
+.fc-swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  box-shadow: inset 0 0 0 1px var(--fc-glass-border);
+  transition: transform .18s;
+  border: 0;
+  padding: 0;
+}
+.fc-swatch:hover { transform: scale(1.08); }
+.fc-swatch.is-on::after {
+  content: "";
+  position: absolute; inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--fc-accent);
+}
+
+/* Settings overlay card surface */
+.fc-overlay-card {
+  width: min(560px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 22px;
+  background: rgba(22, 20, 34, 0.78);
+  backdrop-filter: blur(32px) saturate(170%);
+  -webkit-backdrop-filter: blur(32px) saturate(170%);
+  border: 0.75px solid var(--fc-glass-border);
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.05) inset;
+  position: relative;
+  isolation: isolate;
+}
+.fc-app.is-light .fc-overlay-card {
+  background: rgba(255,255,255,0.85);
+  border-color: rgba(20,18,40,0.10);
+  box-shadow: 0 30px 80px -20px rgba(60,40,110,0.25), 0 2px 0 rgba(255,255,255,0.6) inset;
+}
+.fc-overlay-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 40%);
+  z-index: 0;
+}
+.fc-app.is-light .fc-overlay-card::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), transparent 45%);
+}
+.fc-overlay-card > * { position: relative; z-index: 1; }
+
+/* ── Auth shell (login / register) ──────────────────────────────────────── */
+.fc-auth-page {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+}
+.fc-auth-shell {
+  position: relative;
+  z-index: 50;
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: auto;
+  isolation: isolate;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+.fc-auth-card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 22px;
+  padding: 28px 26px 24px;
+  background: rgba(22, 20, 34, 0.78);
+  backdrop-filter: blur(32px) saturate(170%);
+  -webkit-backdrop-filter: blur(32px) saturate(170%);
+  border: 0.75px solid var(--fc-glass-border);
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.05) inset;
+  position: relative;
+  z-index: 50;
+  pointer-events: auto;
+  isolation: isolate;
+  color: rgba(255,255,255,0.92);
+  animation: fcCardIn .35s cubic-bezier(.2,.8,.2,1) both;
+}
+.fc-aurora.is-light .fc-auth-card {
+  background: rgba(255,255,255,0.85);
+  border-color: rgba(20,18,40,0.10);
+  box-shadow: 0 30px 80px -20px rgba(60,40,110,0.25), 0 2px 0 rgba(255,255,255,0.6) inset;
+  color: #1b1730;
+}
+.fc-auth-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 40%);
+  z-index: 0;
+}
+.fc-aurora.is-light .fc-auth-card::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), transparent 45%);
+}
+.fc-auth-card > * { position: relative; z-index: 1; pointer-events: auto; }
+
+.fc-auth-input {
+  pointer-events: auto;
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  border-radius: 12px;
+  border: 0.75px solid var(--fc-glass-border);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.95);
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.fc-auth-input::placeholder { color: rgba(255,255,255,0.40); }
+.fc-auth-input:focus {
+  border-color: var(--fc-accent);
+  background: rgba(255,255,255,0.10);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--fc-accent) 18%, transparent);
+}
+.fc-aurora.is-light .fc-auth-input {
+  background: rgba(20,18,40,0.04);
+  border-color: rgba(20,18,40,0.10);
+  color: #1b1730;
+}
+.fc-aurora.is-light .fc-auth-input::placeholder { color: rgba(27,23,48,0.40); }
+.fc-aurora.is-light .fc-auth-input:focus { background: rgba(255,255,255,0.7); }
+
+.fc-auth-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 6px;
+}
+.fc-aurora.is-light .fc-auth-label { color: rgba(27,23,48,0.55); }
+
+.fc-auth-btn,
+.fc-auth-link,
+.fc-segmented button {
+  pointer-events: auto;
+}
+
+.fc-auth-btn {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 0;
+  cursor: pointer;
+  transition: opacity .15s, transform .12s;
+  font-family: inherit;
+}
+.fc-auth-btn:active { transform: scale(0.99); }
+.fc-auth-btn:disabled { opacity: 0.55; cursor: default; }
+.fc-auth-btn--primary {
+  background: var(--fc-accent-gradient);
+  color: #fff;
+  box-shadow: 0 12px 30px -12px var(--fc-accent-glow);
+}
+.fc-auth-btn--ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  border: 0.75px solid var(--fc-glass-border);
+}
+.fc-aurora.is-light .fc-auth-btn--ghost { color: rgba(27,23,48,0.75); border-color: rgba(20,18,40,0.12); }
+
+.fc-auth-link {
+  color: var(--fc-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.fc-auth-link:hover { text-decoration: underline; }
+
+.fc-auth-error {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(229,57,53,0.10);
+  border: 0.75px solid rgba(229,57,53,0.25);
+  color: #ff7a78;
+  font-size: 13px;
+}
+.fc-aurora.is-light .fc-auth-error { color: #b32a28; }
+
+.fc-auth-muted { color: rgba(255,255,255,0.55); font-size: 13px; }
+.fc-aurora.is-light .fc-auth-muted { color: rgba(27,23,48,0.55); }
+
+.fc-auth-seed-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 0.75px solid var(--fc-glass-border);
+}
+.fc-aurora.is-light .fc-auth-seed-grid { background: rgba(20,18,40,0.04); border-color: rgba(20,18,40,0.10); }
+.fc-auth-seed-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(255,255,255,0.06);
+  border: 0.75px solid var(--fc-glass-border);
+  font-size: 13px;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+.fc-aurora.is-light .fc-auth-seed-cell { background: rgba(255,255,255,0.6); border-color: rgba(20,18,40,0.08); }
+.fc-auth-seed-cell__num { font-size: 10.5px; color: rgba(255,255,255,0.45); width: 14px; text-align: right; }
+.fc-aurora.is-light .fc-auth-seed-cell__num { color: rgba(27,23,48,0.45); }
+.fc-auth-seed-cell input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+/* ── Details / profile panel (centered overlay card) ────────────────────── */
+.fc-details-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0,0,0,0.40);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  animation: fcOverlayIn .25s ease;
+}
+.fc-app.is-light .fc-details-overlay { background: rgba(255,255,255,0.35); }
+@keyframes fcOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+
+.fc-details-panel {
+  width: min(420px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(22, 20, 34, 0.78);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 0.75px solid var(--fc-glass-border);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px -16px rgba(0,0,0,0.55);
+  color: rgba(255,255,255,0.92);
+  overflow: hidden;
+  padding: 18px 16px;
+  animation: fcCardIn .3s cubic-bezier(.2,.8,.2,1);
+  position: relative;
+}
+.fc-details-panel::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 40%);
+}
+.fc-app.is-light .fc-details-panel {
+  background: rgba(255,255,255,0.88);
+  border-color: rgba(20,18,40,0.10);
+  box-shadow: 0 24px 60px -16px rgba(60,40,110,0.30);
+  color: #1b1730;
+}
+.fc-app.is-light .fc-details-panel::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.55), transparent 40%);
+}
+@keyframes fcCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.fc-details-panel__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 4px 4px;
+  display: flex; flex-direction: column; gap: 14px;
+  scrollbar-width: none;
+  position: relative;
+  z-index: 1;
+}
+.fc-details-panel__scroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+.fc-details-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0 4px;
+}
+.fc-details-action {
+  display: grid; place-items: center; gap: 6px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 0.75px solid var(--fc-glass-border);
+  color: rgba(255,255,255,0.75);
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .18s, color .18s, transform .18s;
+  font-family: inherit;
+}
+.fc-details-action:hover { background: rgba(255,255,255,0.10); color: #fff; }
+.fc-details-action:active { transform: scale(0.96); }
+.fc-app.is-light .fc-details-action {
+  background: rgba(20,18,40,0.04);
+  border-color: rgba(20,18,40,0.10);
+  color: rgba(27,23,48,0.75);
+}
+.fc-app.is-light .fc-details-action:hover { background: rgba(124,58,237,0.08); color: #1b1730; }
+.fc-details-action.is-on { color: var(--fc-accent); border-color: color-mix(in oklab, var(--fc-accent) 30%, transparent); background: color-mix(in oklab, var(--fc-accent) 10%, transparent); }
+.fc-details-action.is-danger { color: #f47570; border-color: rgba(244,67,54,0.30); background: rgba(244,67,54,0.08); }
+
+.fc-details-section {
+  border-top: 0.75px solid var(--fc-glass-border);
+  padding-top: 12px;
+}
+.fc-app.is-light .fc-details-section { border-top-color: rgba(20,18,40,0.10); }
+.fc-details-section__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 2px;
+  color: rgba(255,255,255,0.65);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  background: none;
+  border: 0;
+  width: 100%;
+  font-family: inherit;
+}
+.fc-app.is-light .fc-details-section__head { color: rgba(27,23,48,0.65); }
+.fc-details-section__head .fc-details-count { color: rgba(255,255,255,0.45); font-weight: 400; margin-left: 4px; }
+.fc-app.is-light .fc-details-section__head .fc-details-count { color: rgba(27,23,48,0.45); }
+.fc-details-section__body {
+  display: grid; gap: 6px;
+  padding: 8px 0 0;
+}
+
+.fc-file-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 8px;
+  border-radius: 12px;
+  transition: background .16s;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.fc-file-row:hover { background: rgba(255,255,255,0.06); }
+.fc-app.is-light .fc-file-row:hover { background: rgba(124,58,237,0.06); }
+.fc-file-row__icon {
+  width: 32px; height: 36px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  position: relative;
+  text-transform: uppercase;
+}
+.fc-file-row__icon::after {
+  content: "";
+  position: absolute; top: 0; right: 0;
+  width: 8px; height: 8px;
+  background: rgba(255,255,255,0.35);
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+.fc-file-row__name { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-file-row__meta { font-size: 11px; color: rgba(255,255,255,0.50); margin-top: 1px; }
+.fc-app.is-light .fc-file-row__meta { color: rgba(27,23,48,0.50); }
+.fc-file-row__download { color: rgba(255,255,255,0.50); display: flex; align-items: center; }
+.fc-file-row:hover .fc-file-row__download { color: var(--fc-accent); }
+.fc-app.is-light .fc-file-row__download { color: rgba(27,23,48,0.50); }
+
+.fc-media-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px 0 0;
+}
+.fc-media-tile {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  transition: transform .25s, box-shadow .25s;
+  background: rgba(255,255,255,0.06);
+  border: 0;
+  padding: 0;
+}
+.fc-media-tile:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -12px var(--fc-accent-glow); }
+.fc-media-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Mobile fallback — collapse grid on narrow viewports */
+@media (max-width: 720px) {
+  .fc-app {
+    grid-template-columns: 1fr !important;
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+}
+
+@keyframes fcDrift {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  50%  { transform: translate3d(5%, -3%, 0) scale(1.08); }
+  100% { transform: translate3d(-4%, 4%, 0) scale(0.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc-aurora__blob { animation: none !important; }
+}
+
+/* ── Glass surface utility ──────────────────────────────────────────────── */
+.fc-glass {
+  background: var(--fc-glass-bg);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 0.75px solid var(--fc-glass-border);
+  box-shadow: var(--fc-glass-shadow);
+}
+.fc-glass-soft {
+  background: var(--fc-glass-bg-soft);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+.fc-glass-strong {
+  background: var(--fc-glass-bg-strong);
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+}
+
+/* ── Message enter animations (Telegram-style) ─────────────────────────── */
+@keyframes msgSlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateY(14px) translateX(-6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0) scale(1);
+  }
+}
+@keyframes msgSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateY(14px) translateX(6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0) scale(1);
+  }
+}
+.msg-enter-left {
+  animation: msgSlideInLeft 0.22s cubic-bezier(0.34, 1.32, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+.msg-enter-right {
+  animation: msgSlideInRight 0.22s cubic-bezier(0.34, 1.32, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes msgDeleteOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    max-height: 500px;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 1px;
+    padding-bottom: 1px;
+  }
+  40% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.88);
+    max-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+.msg-deleting {
+  animation: msgDeleteOut 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity, max-height;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Selection toolbar slide-in */
+@keyframes selToolbarIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.sel-toolbar-enter {
+  animation: selToolbarIn 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* Message context menu pop-in */
+@keyframes msgMenuIn {
+  from { opacity: 0; transform: scale(0.90); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.msg-menu-enter {
+  animation: msgMenuIn 0.14s cubic-bezier(0.2, 0, 0, 1.15) both;
+  transform-origin: top left;
+}
+
+/* Message flash highlight (reply scroll) */
+@keyframes msgFlash {
+  0%   { background-color: transparent; }
+  20%  { background-color: rgba(83, 74, 183, 0.18); }
+  70%  { background-color: rgba(83, 74, 183, 0.18); }
+  100% { background-color: transparent; }
+}
+.msg-flash {
+  animation: msgFlash 1.2s ease both;
+  border-radius: 10px;
+}
+
+/* Send button pop */
+@keyframes sendPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.78); }
+  75%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.send-pop {
+  animation: sendPop 0.22s cubic-bezier(0.34, 1.5, 0.64, 1) both;
+}
+
+/* Typing indicator — Telegram-style 3 bouncing dots */
+@keyframes typingBall {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
+  30%            { transform: translateY(-5px); opacity: 1; }
+}
+.typing-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; display: inline-block;
+  animation: typingBall 1.3s ease infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.18s; }
+.typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+/* Legacy (header "typing…") */
+.dot-anim { display: inline-block; width: 18px; }
+.dot-anim::after { content: "…"; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Big emoji pop animation ──────────────────────────────────────────────── */
+@keyframes emojiPop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.emoji-pop {
+  animation: emojiPop 0.3s ease-out both;
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+/* ── Global smooth transition base ─────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Lightbox overlay fade-in ───────────────────────────────────────────── */
+@keyframes fcFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fc-fade-in {
+  animation: fcFadeIn 0.18s ease both;
+}
+
+/* ── Overlay fade-out ───────────────────────────────────────────────────── */
+@keyframes fcFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Lightbox image scale-in ────────────────────────────────────────────── */
+@keyframes fcImageIn {
+  from { opacity: 0; transform: scale(0.93); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.fc-image-in {
+  animation: fcImageIn 0.2s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+}
+
+/* ── Panel / modal scale-in (settings) ─────────────────────────────────── */
+@keyframes fcScaleIn {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.fc-scale-in {
+  animation: fcScaleIn 0.2s cubic-bezier(0.34, 1.15, 0.64, 1) both;
+}
+
+/* ── Modal scale-out (close) ────────────────────────────────────────────── */
+@keyframes fcScaleOut {
+  from { opacity: 1; transform: scale(1)    translateY(0); }
+  to   { opacity: 0; transform: scale(0.93) translateY(10px); }
+}
+
+/* ── Profile / side panel slide-in from right ───────────────────────────── */
+@keyframes fcSlideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.fc-slide-in-right {
+  animation: fcSlideInRight 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* ── Attachment preview bar slide-up ────────────────────────────────────── */
+@keyframes fcSlideInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fc-slide-in-up {
+  animation: fcSlideInUp 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* ── Dropdown / more-menu pop-in ────────────────────────────────────────── */
+@keyframes fcDropdownIn {
+  from { opacity: 0; transform: scale(0.92) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.fc-dropdown-in {
+  animation: fcDropdownIn 0.15s cubic-bezier(0.2, 0, 0, 1.2) both;
+}
+
+/* ── Circular icon button hover / active ────────────────────────────────── */
+.fc-icon-btn {
+  transition: background 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
+  cursor: pointer;
+}
+.fc-icon-btn:hover  { background: rgba(255,255,255,0.22) !important; }
+.fc-icon-btn:active { transform: scale(0.90); }
+
+/* ── Sidebar conversation row ───────────────────────────────────────────── */
+.fc-conv-item {
+  transition: background 0.13s ease;
+  cursor: pointer;
+}
+.fc-conv-item:hover  { filter: brightness(1.06); }
+.fc-conv-item:active { filter: brightness(0.95); }
+
+/* ── Generic action button (rectangular) ───────────────────────────────── */
+.fc-action-btn {
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+.fc-action-btn:hover  { filter: brightness(1.08); }
+.fc-action-btn:active { transform: scale(0.96); }
+
+/* ── Input focus ring ───────────────────────────────────────────────────── */
+.fc-input {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.fc-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--fc-accent-rgb), 0.28);
+}
+
+/* ── Tab underline transition ───────────────────────────────────────────── */
+.fc-tab {
+  transition: color 0.15s ease, border-bottom-color 0.15s ease;
+}
+
+/* ── Online indicator subtle pulse ──────────────────────────────────────── */
+@keyframes fcPulse {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(var(--fc-accent-rgb), 0.55); }
+  50%       { box-shadow: 0 0 0 4px rgba(var(--fc-accent-rgb), 0); }
+}
+.fc-online-dot {
+  animation: fcPulse 2.4s ease infinite;
+}
+
+/* ── Smooth scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.28); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.45); }
+
+/* ── Skeleton / shimmer loading ─────────────────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg,
+    rgba(128,128,128,0.10) 0%,
+    rgba(128,128,128,0.25) 50%,
+    rgba(128,128,128,0.10) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease infinite;
+  border-radius: 12px;
+}
+
+/* ── Chat area fade when switching conversations ─────────────────────────── */
+@keyframes chatAreaFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.chat-area-fade {
+  animation: chatAreaFadeIn 0.18s ease both;
+}
+
+/* ── Reaction pill pop-in ────────────────────────────────────────────────── */
+@keyframes reactionPop {
+  from { transform: scale(0.3); opacity: 0; }
+  65%  { transform: scale(1.22); }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.reaction-pop {
+  animation: reactionPop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Scroll-to-bottom button slide up ───────────────────────────────────── */
+@keyframes scrollBtnAppear {
+  from { opacity: 0; transform: translateY(10px) scale(0.88); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+.scroll-btn-appear {
+  animation: scrollBtnAppear 0.2s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+
+/* ── Unread badge pulse ──────────────────────────────────────────────────── */
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229,57,53,0.6); }
+  50%       { transform: scale(1.12); box-shadow: 0 0 0 4px rgba(229,57,53,0); }
+}
+.badge-pulse {
+  animation: badgePulse 2s ease infinite;
+}
+
+/* ── Blur-up image loading ───────────────────────────────────────────────── */
+.img-blur { filter: blur(8px); transition: filter 0.35s ease; }
+.img-blur.img-loaded { filter: blur(0); }
+
+/* ── Typing bubble slide-in ─────────────────────────────────────────────── */
+@keyframes typingBubbleIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+.typing-bubble {
+  animation: typingBubbleIn 0.2s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+/* ── Conversation item slide-in ─────────────────────────────────────────── */
+@keyframes convItemIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.conv-item-enter {
+  animation: convItemIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Roboto', sans-serif;
+  --font-display: 'Roboto', sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* Dark Messenger Theme - Deep Dark Backgrounds with Blue Accents */
+  --background: 240 10% 4%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 6%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 6%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 215 79% 69%; /* #70A5EE Blue */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 5% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 5% 16%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 240 5% 16%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5% 16%;
+  --input: 240 5% 16%;
+  --ring: 215 79% 69%;
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+/* ── Payment modal — gradient action button hover ───────────────────────── */
+.fc-btn-grad {
+  transition: filter 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+.fc-btn-grad:hover:not(:disabled) {
+  filter: brightness(1.18);
+  box-shadow: 0 6px 24px rgba(155, 92, 246, 0.55);
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* ── Payment modal — close (X) button hover ─────────────────────────────── */
+.fc-btn-close {
+  transition: filter 0.15s ease, box-shadow 0.15s ease, transform 0.13s ease;
+}
+.fc-btn-close:hover {
+  filter: brightness(1.22);
+  box-shadow: 0 4px 18px rgba(155, 92, 246, 0.65);
+  transform: scale(1.1);
+}
+.fc-btn-close:active {
+  transform: scale(0.93);
+}
+
+/* Recording UI animations */
+@keyframes rec-pulse-anim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.75); }
+}
+.rec-pulse {
+  animation: rec-pulse-anim 1s ease-in-out infinite;
+}
+
+@keyframes rec-bar-anim {
+  0%, 100% { height: 6px; }
+  50% { height: 22px; }
+}
+.rec-bar {
+  height: 6px;
+  animation: rec-bar-anim 0.55s ease-in-out infinite alternate;
+}

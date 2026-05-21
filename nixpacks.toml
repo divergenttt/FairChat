@@ -1,0 +1,11 @@
+# Railway Nixpacks — Node 22+ required for pnpm 11.1.3 (Corepack dynamic import)
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+
+[phases.install]
+cmds = [
+  "corepack enable",
+  "corepack prepare pnpm@11.1.3 --activate",
+  "pnpm --version",
+  "pnpm install --no-frozen-lockfile",
+]
