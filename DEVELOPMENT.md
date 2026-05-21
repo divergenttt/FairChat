@@ -88,9 +88,19 @@ Optional env: `VITE_API_URL`, `VITE_WS_URL` (see DEPLOY.md for split hosting).
 pnpm --filter @workspace/api-spec run codegen
 ```
 
+## Registration
+
+Registration is **open** — no invite code is required.
+
+1. Open `/register`, choose display name, username, and password.
+2. Save the 12-word recovery phrase (used for account recovery and E2E key derivation).
+3. `POST /api/auth/register` creates the account; the session cookie is set automatically.
+
+`POST /api/auth/check-username` reports username availability during sign-up. Legacy invite-code flows (`FC-DEMO`, `/api/auth/validate-invite`) are **not** part of the current product and are not required for new accounts.
+
 ## FairChat features (summary)
 
-- Open registration (public sign-up)
+- Open registration (public sign-up, no invite gate)
 - E2E messaging (libsodium); real-time via `WS /api/ws`
 - Crypto payments: standard ERC-20, Arc Circle x402, confidential StableTrust
 - RPC proxy: `POST /api/rpc-proxy` for wallet balance reads from the browser
@@ -108,6 +118,8 @@ pnpm run typecheck
 - Set `JWT_SECRET` in production (ephemeral random if unset — sessions lost on restart)
 - Rate limits on auth, messages, uploads, reactions
 - WebSocket: cookie on same origin, or `GET /api/auth/ws-token` + `{ type: "auth", token }` cross-host
+- **E2E private keys**: stored in IndexedDB (`fairchat_sk`, per-user `fairchat_sk_<userId>`). On logout, `useAuth` calls `clearPrivateKey()` to wipe IndexedDB entries, any legacy `localStorage` copies, and the in-memory key cache before redirecting to `/`.
+- **DM policy**: outbound messages require the recipient to be in the sender’s `user_contacts` list (see `POST /api/messages/:recipientId`).
 
 ## Demo credentials (seeded DB)
 

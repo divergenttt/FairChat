@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiUrl } from "@/lib/apiConfig";
+import { clearPrivateKey } from "@/lib/crypto";
 
 interface User {
   id: string;
@@ -136,14 +137,21 @@ export function useAuth() {
   );
 
   const logout = useCallback(() => {
-    fetch(apiUrl("/api/auth/logout"), {
-      method: "POST",
-      credentials: "include",
-    }).catch(() => {});
-    setUser(null);
-    setIsAuthenticated(false);
-    window.location.href = "/";
-  }, []);
+    const userId = user?.id;
+    void (async () => {
+      try {
+        await clearPrivateKey(userId);
+      } catch {
+        /* best-effort wipe before redirect */
+      }
+      fetch(apiUrl("/api/auth/logout"), {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {});
+      clearSession();
+      window.location.href = "/";
+    })();
+  }, [user?.id, clearSession]);
 
   const updateUser = useCallback((patch: Partial<User>) => {
     setUser((prev) => (prev ? { ...prev, ...patch } : prev));
